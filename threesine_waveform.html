@@ -248,7 +248,7 @@ body {
   <div class="wave-viewport">
     <div class="wave-label">
       <span>AC Waveform &mdash; 60 Hz</span>
-      <span id="mode-label">Single Phase</span>
+      <span id="mode-label">Three Phase</span>
     </div>
     <canvas id="ac-canvas" height="220"></canvas>
     <div class="wave-legend" id="legend"></div>
@@ -257,8 +257,8 @@ body {
   <!-- Row 1: Phase toggle + speed -->
   <div class="controls-row">
     <span class="row-label">Phase</span>
-    <button class="wave-btn active-red" id="btn-single">Single Phase</button>
-    <button class="wave-btn" id="btn-three">Three Phase</button>
+    <button class="wave-btn" id="btn-single">Single Phase</button>
+    <button class="wave-btn active-blue" id="btn-three">Three Phase</button>
     <div class="controls-spacer"></div>
     <span class="row-label">Speed</span>
     <button class="wave-btn" id="btn-slow">Slow</button>
@@ -301,7 +301,7 @@ body {
   const GHOST = '#252a38';
 
   // State
-  let showThree = false;
+  let showThree = true;
   let offset = 0;
   let speed = 0.035;
   let dpr = 1;
@@ -550,7 +550,7 @@ body {
   // Init
   resize();
   window.addEventListener('resize', resize);
-  legendEl.innerHTML = LEGENDS.single;
+  legendEl.innerHTML = LEGENDS.three;
   animate();
 
   // ── Phase controls ──
