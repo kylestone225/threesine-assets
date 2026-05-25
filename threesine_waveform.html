@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Three-Sine AC Waveform</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #181920;
+  --surface: #1e2028;
+  --border: #2a2d3a;
+  --text: #e8eaf0;
+  --muted: #7a8299;
+  --red: #d94045;
+  --blue: #3b6fbf;
+  --white-wave: #d8dce6;
+  --green: #2ea66a;
+  --yellow: #c9a227;
+  --orange: #d4793a;
+  --danger: #b83333;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.wave-unit {
+  width: 100%;
+  max-width: 900px;
+}
+
+/* ── Canvas area ── */
+.wave-viewport {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px 6px 0 0;
+  padding: 28px 28px 20px;
+  position: relative;
+}
+
+.wave-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#ac-canvas {
+  width: 100%;
+  height: 220px;
+  display: block;
+}
+
+/* ── Legend ── */
+.wave-legend {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  min-height: 20px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-swatch {
+  width: 20px;
+  height: 3px;
+  border-radius: 1px;
+}
+
+/* ── Controls ── */
+.controls-row {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 14px 28px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.controls-row:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.controls-row .row-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #444b5e;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.wave-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.wave-btn:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.wave-btn.active {
+  background: var(--white-wave);
+  border-color: var(--white-wave);
+  color: var(--bg);
+}
+
+.wave-btn.active-red {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+}
+
+.wave-btn.active-blue {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: white;
+}
+
+.wave-btn.active-green {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+
+.wave-btn.active-yellow {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--bg);
+}
+
+.wave-btn.active-orange {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: white;
+}
+
+.wave-btn.active-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.controls-spacer { flex: 1; }
+
+/* ── THD readout ── */
+.thd-readout {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 90px;
+  transition: color 0.3s;
+}
+
+.thd-unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+
+/* ── THD source label ── */
+.thd-source {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  padding: 10px 28px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  line-height: 1.6;
+}
+
+.thd-source .src-name {
+  font-weight: 600;
+  transition: color 0.3s;
+}
+
+/* ── Ghost wave label ── */
+.ghost-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: #333a4d;
+  letter-spacing: 0.1em;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  body { padding: 12px; }
+  .wave-viewport { padding: 16px 16px 14px; }
+  .controls-row { padding: 10px 16px; gap: 6px; }
+  .thd-source { padding: 8px 16px 12px; }
+  #ac-canvas { height: 170px; }
+  .wave-legend { gap: 14px; font-size: 10px; }
+  .wave-btn { padding: 6px 10px; font-size: 9px; letter-spacing: 0.05em; }
+  .thd-readout { font-size: 22px; min-width: 70px; }
+  .controls-row .row-label { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wave-unit">
+  <div class="wave-viewport">
+    <div class="wave-label">
+      <span>AC Waveform &mdash; 60 Hz</span>
+      <span id="mode-label">Single Phase</span>
+    </div>
+    <canvas id="ac-canvas" height="220"></canvas>
+    <div class="wave-legend" id="legend"></div>
+  </div>
+
+  <!-- Row 1: Phase toggle + speed -->
+  <div class="controls-row">
+    <span class="row-label">Phase</span>
+    <button class="wave-btn active-red" id="btn-single">Single Phase</button>
+    <button class="wave-btn" id="btn-three">Three Phase</button>
+    <div class="controls-spacer"></div>
+    <span class="row-label">Speed</span>
+    <button class="wave-btn" id="btn-slow">Slow</button>
+    <button class="wave-btn active" id="btn-normal">Normal</button>
+    <button class="wave-btn" id="btn-fast">Fast</button>
+  </div>
+
+  <!-- Row 2: THD presets + readout -->
+  <div class="controls-row">
+    <span class="row-label">THD</span>
+    <button class="wave-btn active-green" id="thd-0" data-thd="0">Pure</button>
+    <button class="wave-btn" id="thd-2" data-thd="2.5">3-Sine</button>
+    <button class="wave-btn" id="thd-5" data-thd="5">Grid</button>
+    <button class="wave-btn" id="thd-12" data-thd="12">Rental Gen</button>
+    <button class="wave-btn" id="thd-20" data-thd="20">Bob's Garage</button>
+    <div class="controls-spacer"></div>
+    <div class="thd-readout" id="thd-readout" style="color:var(--green);">0<span class="thd-unit">% THD</span></div>
+  </div>
+
+  <!-- THD source description -->
+  <div class="thd-source" id="thd-source">
+    <span class="src-name" id="src-name" style="color:var(--green);">Pure Sine Wave</span> &mdash; Theoretical perfect. No harmonics. This is what a textbook draws.
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('ac-canvas');
+  const ctx = canvas.getContext('2d');
+  const legendEl = document.getElementById('legend');
+  const modeLabelEl = document.getElementById('mode-label');
+  const thdReadout = document.getElementById('thd-readout');
+  const thdSource = document.getElementById('thd-source');
+  const srcName = document.getElementById('src-name');
+
+  // Brand colors
+  const RED   = '#d94045';
+  const BLUE  = '#3b6fbf';
+  const WHITE = '#d8dce6';
+  const GHOST = '#252a38';
+
+  // State
+  let showThree = false;
+  let offset = 0;
+  let speed = 0.035;
+  let dpr = 1;
+  let currentTHD = 0;       // current animated THD
+  let targetTHD = 0;        // target THD
+  let thdPresetKey = '0';   // which preset is active
+
+  // THD presets: harmonic amplitudes as fraction of fundamental
+  // Real THD is dominated by odd harmonics (3rd, 5th, 7th, 9th, 11th)
+  // THD% = 100 * sqrt(sum of squares of harmonic amplitudes)
+  // We distribute harmonics realistically: 3rd dominant, diminishing higher orders
+  const THD_PRESETS = {
+    // Harmonic signs: negative 3rd flattens peaks (magnetic saturation pattern),
+    // positive 5th sharpens slightly, negative 7th, etc. This alternating pattern
+    // produces the flat-topped clipping waveform characteristic of real generator
+    // core saturation under load. THD% = 100 * sqrt(sum of squares).
+    '0':    { harmonics: [0, 0, 0, 0, 0], label: 'Pure Sine Wave', desc: 'Theoretical perfect. No harmonics. This is what a textbook draws.', color: 'var(--green)', colorHex: '#2ea66a' },
+    '2.5':  { harmonics: [-0.020, 0.010, -0.006, 0.004, -0.002], label: '3-Sine Portable Power', desc: '2-3% THD. Cleaner than most grid power. Your amplifiers, consoles, and motors get exactly the waveform they were designed for.', color: 'var(--green)', colorHex: '#2ea66a' },
+    '5':    { harmonics: [-0.042, 0.018, -0.012, 0.007, -0.003], label: 'IEEE 519 Grid Standard', desc: '\u22645% THD. The maximum allowable distortion on US power grids per IEEE 519. What comes out of most commercial wall outlets.', color: 'var(--yellow)', colorHex: '#c9a227' },
+    '12':   { harmonics: [-0.100, 0.045, -0.030, 0.018, -0.010], label: 'Typical Rental Generator', desc: '8-15% THD. Open-frame diesel tow-behinds under load. Enough distortion to cause audible hum in PA systems and shorten motor life.', color: 'var(--orange)', colorHex: '#d4793a' },
+    '20':   { harmonics: [-0.165, 0.075, -0.050, 0.030, -0.018], label: "Bob's Garage Rental", desc: "15-25% THD. Old, poorly maintained portable generators. Voltage sag under load, frequency drift, visible flicker in lighting rigs. Your gear's warranty doesn't cover this.", color: 'var(--danger)', colorHex: '#b83333' },
+  };
+
+  // Harmonic orders: 3rd, 5th, 7th, 9th, 11th
+  const HARMONIC_ORDERS = [3, 5, 7, 9, 11];
+
+  const LEGENDS = {
+    single: `
+      <div class="legend-item"><div class="legend-swatch" style="background:${RED};"></div><span>120V Single Phase</span></div>`,
+    three: `
+      <div class="legend-item"><div class="legend-swatch" style="background:${RED};"></div><span>Phase L1</span></div>
+      <div class="legend-item"><div class="legend-swatch" style="background:${BLUE};"></div><span>Phase L2</span></div>
+      <div class="legend-item"><div class="legend-swatch" style="background:${WHITE};"></div><span>Phase L3</span></div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#444;border-top:2px dashed #555;height:0;"></div><span>Zero</span></div>`
+  };
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+  }
+
+  // Compute distorted sine value at time t
+  function distortedSin(t, harmonicAmps) {
+    let val = Math.sin(t);
+    for (let i = 0; i < HARMONIC_ORDERS.length; i++) {
+      if (Math.abs(harmonicAmps[i]) > 0.0001) {
+        val += harmonicAmps[i] * Math.sin(HARMONIC_ORDERS[i] * t);
+      }
+    }
+    return val;
+  }
+
+  // Get interpolated harmonic amplitudes based on currentTHD
+  function getHarmonics() {
+    // Find the two presets we're between
+    const keys = Object.keys(THD_PRESETS).map(Number).sort((a,b) => a - b);
+    let lo = keys[0], hi = keys[keys.length - 1];
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (currentTHD >= keys[i] && currentTHD <= keys[i+1]) {
+        lo = keys[i]; hi = keys[i+1]; break;
+      }
+    }
+    if (hi === lo) return THD_PRESETS[String(lo)].harmonics;
+    const frac = (currentTHD - lo) / (hi - lo);
+    const loH = THD_PRESETS[String(lo)].harmonics;
+    const hiH = THD_PRESETS[String(hi)].harmonics;
+    return loH.map((v, i) => v + (hiH[i] - v) * frac);
+  }
+
+  function drawWave(phaseOffset, color, lineWidth, harmonics) {
+    const W = canvas.width / dpr;
+    const H = canvas.height / dpr;
+    const amp = H * 0.36;
+    const cy = H / 2;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth || 2.5;
+    ctx.lineJoin = 'round';
+
+    for (let x = 0; x <= W; x++) {
+      const t = (x / W) * Math.PI * 4 + offset + phaseOffset;
+      const y = cy - distortedSin(t, harmonics) * amp;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGlow(phaseOffset, color, harmonics) {
+    const W = canvas.width / dpr;
+    const H = canvas.height / dpr;
+    const amp = H * 0.36;
+    const cy = H / 2;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 10;
+    ctx.globalAlpha = 0.06;
+    ctx.lineJoin = 'round';
+
+    for (let x = 0; x <= W; x++) {
+      const t = (x / W) * Math.PI * 4 + offset + phaseOffset;
+      const y = cy - distortedSin(t, harmonics) * amp;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // Ghost wave: pure sine shown faintly for comparison when THD > 0
+  function drawGhostWave(phaseOffset) {
+    if (currentTHD < 0.5) return;
+    const W = canvas.width / dpr;
+    const H = canvas.height / dpr;
+    const amp = H * 0.36;
+    const cy = H / 2;
+    const zeroH = [0,0,0,0,0];
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.beginPath();
+    ctx.strokeStyle = GHOST;
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+
+    for (let x = 0; x <= W; x++) {
+      const t = (x / W) * Math.PI * 4 + offset + phaseOffset;
+      const y = cy - Math.sin(t) * amp;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawZeroLine() {
+    const W = canvas.width / dpr;
+    const H = canvas.height / dpr;
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.beginPath();
+    ctx.strokeStyle = '#2d3548';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.moveTo(0, H / 2);
+    ctx.lineTo(W, H / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawPeakMarkers() {
+    const W = canvas.width / dpr;
+    const H = canvas.height / dpr;
+    const amp = H * 0.36;
+    const cy = H / 2;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    ctx.strokeStyle = '#222636';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 6]);
+
+    ctx.beginPath();
+    ctx.moveTo(0, cy - amp);
+    ctx.lineTo(W, cy - amp);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, cy + amp);
+    ctx.lineTo(W, cy + amp);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+    ctx.font = '9px IBM Plex Mono';
+    ctx.fillStyle = '#353a50';
+    ctx.textAlign = 'right';
+    ctx.fillText('+170V peak', W - 6, cy - amp + 12);
+    ctx.fillText('\u2212170V peak', W - 6, cy + amp - 6);
+    ctx.fillText('0V', W - 6, cy - 4);
+
+    // Ghost wave label when distorted
+    if (currentTHD >= 0.5) {
+      ctx.fillStyle = '#2a3045';
+      ctx.textAlign = 'left';
+      ctx.fillText('pure sine (reference)', 6, cy - amp + 12);
+    }
+
+    ctx.restore();
+  }
+
+  function animate() {
+    const W = canvas.width;
+    const H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Smooth THD transitions
+    const diff = targetTHD - currentTHD;
+    if (Math.abs(diff) > 0.01) {
+      currentTHD += diff * 0.06;
+    } else {
+      currentTHD = targetTHD;
+    }
+
+    // Update readout
+    const displayTHD = currentTHD < 0.1 ? '0' : currentTHD.toFixed(1);
+    thdReadout.innerHTML = displayTHD + '<span class="thd-unit">% THD</span>';
+
+    const harmonics = getHarmonics();
+
+    drawPeakMarkers();
+    drawZeroLine();
+
+    if (showThree) {
+      // Ghost waves
+      drawGhostWave(0);
+      drawGhostWave(2 * Math.PI / 3);
+      drawGhostWave(4 * Math.PI / 3);
+      // Glows
+      drawGlow(0, RED, harmonics);
+      drawGlow(2 * Math.PI / 3, BLUE, harmonics);
+      drawGlow(4 * Math.PI / 3, WHITE, harmonics);
+      // Waves
+      drawWave(0, RED, 2.5, harmonics);
+      drawWave(2 * Math.PI / 3, BLUE, 2.5, harmonics);
+      drawWave(4 * Math.PI / 3, WHITE, 2, harmonics);
+    } else {
+      drawGhostWave(0);
+      drawGlow(0, RED, harmonics);
+      drawWave(0, RED, 3, harmonics);
+    }
+
+    offset -= speed;
+    requestAnimationFrame(animate);
+  }
+
+  // Init
+  resize();
+  window.addEventListener('resize', resize);
+  legendEl.innerHTML = LEGENDS.single;
+  animate();
+
+  // ── Phase controls ──
+  const btnSingle = document.getElementById('btn-single');
+  const btnThree = document.getElementById('btn-three');
+
+  function setMode(three) {
+    showThree = three;
+    btnSingle.className = three ? 'wave-btn' : 'wave-btn active-red';
+    btnThree.className = three ? 'wave-btn active-blue' : 'wave-btn';
+    legendEl.innerHTML = three ? LEGENDS.three : LEGENDS.single;
+    modeLabelEl.textContent = three ? 'Three Phase' : 'Single Phase';
+  }
+
+  btnSingle.addEventListener('click', () => setMode(false));
+  btnThree.addEventListener('click', () => setMode(true));
+
+  // ── Speed controls ──
+  const btnSlow = document.getElementById('btn-slow');
+  const btnNormal = document.getElementById('btn-normal');
+  const btnFast = document.getElementById('btn-fast');
+
+  function setSpeed(s, activeBtn) {
+    speed = s;
+    [btnSlow, btnNormal, btnFast].forEach(b => b.className = 'wave-btn');
+    activeBtn.className = 'wave-btn active';
+  }
+
+  btnSlow.addEventListener('click', () => setSpeed(0.012, btnSlow));
+  btnNormal.addEventListener('click', () => setSpeed(0.035, btnNormal));
+  btnFast.addEventListener('click', () => setSpeed(0.08, btnFast));
+
+  // ── THD controls ──
+  const thdBtns = document.querySelectorAll('[data-thd]');
+  const THD_ACTIVE_CLASSES = {
+    '0': 'active-green',
+    '2.5': 'active-green',
+    '5': 'active-yellow',
+    '12': 'active-orange',
+    '20': 'active-danger',
+  };
+
+  function setTHD(thdVal) {
+    const key = String(thdVal);
+    thdPresetKey = key;
+    targetTHD = thdVal;
+    const preset = THD_PRESETS[key];
+
+    // Update button states
+    thdBtns.forEach(b => b.className = 'wave-btn');
+    const activeBtn = document.querySelector(`[data-thd="${thdVal}"]`);
+    if (activeBtn) activeBtn.className = 'wave-btn ' + THD_ACTIVE_CLASSES[key];
+
+    // Update readout color
+    thdReadout.style.color = preset.color;
+
+    // Update source description
+    srcName.textContent = preset.label;
+    srcName.style.color = preset.color;
+    thdSource.innerHTML = '<span class="src-name" style="color:' + preset.color + ';">' + preset.label + '</span> \u2014 ' + preset.desc;
+  }
+
+  thdBtns.forEach(btn => {
+    btn.addEventListener('click', () => setTHD(parseFloat(btn.dataset.thd)));
+  });
+
+  // Init THD state
+  setTHD(0);
+})();
+</script>
+
+</body>
+</html>
